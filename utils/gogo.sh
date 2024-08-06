@@ -7,13 +7,30 @@ usage() {
     exit 1
 }
 
+# Persist state for auto-start on workspace reboot
+statefile=/workspace/.gogostate
+if test -e "${statefile}"; then {
+    IFS=',' read -r iid sarg < "${statefile}"
+    if test "${iid}" != "${GITPOD_INSTANCE_ID}"; then
+        printf '%s,%s\n' "${GITPOD_INSTANCE_ID}" "${sarg}" > "${statefile}"
+        # Set arg
+        arg="${sarg}"
+    fi
+} fi
+
 # Validate and process the argument
-if [ $# -ne 1 ]; then
-    usage
+if test ! -v arg; then
+    if [ $# -ne 1 ]; then
+        usage
+    fi
+
+    # Convert argument to lowercase for case-insensitive comparison
+    arg=$(echo "$1" | tr '[:upper:]' '[:lower:]')
+
+    printf '%s,%s\n' "${GITPOD_INSTANCE_ID}" "${arg}" > "${statefile}"
 fi
 
-# Convert argument to lowercase for case-insensitive comparison
-arg=$(echo "$1" | tr '[:upper:]' '[:lower:]')
+
 
 # Navigate to the appropriate directory based on the argument
 case "$arg" in
@@ -38,10 +55,5 @@ fi
 # Change to the target directory
 cd "$target_dir" || exit
 
-# Launch Jupyter Notebook with desired options
-jupyter notebook --NotebookApp.allow_origin='*' \
-                 --NotebookApp.allow_remote_access=True \
-                 --NotebookApp.token='' \
-                 --NotebookApp.password='' \
-                 --no-browser \
-                 --port=8888
+# Launch Jupyter Lab with desired options
+jupyter lab --port 8888 --ServerApp.token='' --ServerApp.allow_remote_access=true --no-browser
